@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8' />
+    <meta http-equiv="X-UA-Compatible" content="chrome=1" />
+    <meta name="description" content="Webcam-pulse-detector : A python application that detects and highlights the heart-rate of an individual (using only their own webcam) in real-time." />
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Webcam-pulse-detector</title>
+  </head>
+
+  <body>
+
+    <!-- HEADER -->
+    <div id="header_wrap" class="outer">
+        <header class="inner">
+          <a id="forkme_banner" href="https://github.com/thearn/webcam-pulse-detector">View on GitHub</a>
+
+          <h1 id="project_title">Webcam-pulse-detector</h1>
+          <h2 id="project_tagline">A python application that detects and highlights the heart-rate of an individual (using only their own webcam) in real-time.</h2>
+
+            <section id="downloads">
+              <a class="zip_download_link" href="https://github.com/thearn/webcam-pulse-detector/zipball/master">Download this project as a .zip file</a>
+              <a class="tar_download_link" href="https://github.com/thearn/webcam-pulse-detector/tarball/master">Download this project as a tar.gz file</a>
+            </section>
+        </header>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        <p><img src="http://i.imgur.com/2ngZopS.jpg" alt="Alt text" title="Screenshot"></p>
+
+<h2>
+<a name="webcam-pulse-detector" class="anchor" href="#webcam-pulse-detector"><span class="octicon octicon-link"></span></a>webcam-pulse-detector</h2>
+
+<p>A python code that detects the heart-rate of an individual using a common webcam or network IP camera. 
+Tested on OSX 10.8 (Mountain Lion), Ubuntu 13.04 (Ringtail), and Windows 7 &amp; 8.</p>
+
+<p>Inspired by reviewing recent work on <a href="http://people.csail.mit.edu/mrub/vidmag/">Eulerian Video Magnification</a>, 
+with motivation to implement something visually comparable (though not necessarily identical in formulation) to their
+pulse detection examples using <a href="http://python.org/">Python</a> and <a href="http://opencv.org/">OpenCV</a> (see <a href="https://github.com/brycedrennan/eulerian-magnification">https://github.com/brycedrennan/eulerian-magnification</a> for a 
+more general take on the offline post-processing methodology). 
+This goal is comparable to those of a few previous efforts in this area 
+(such as <a href="https://github.com/mossblaser/HeartMonitor">https://github.com/mossblaser/HeartMonitor</a>).</p>
+
+<p>This code was developed at <a href="http://www.nasa.gov/centers/glenn">NASA Glenn Research Center</a> in 
+support of <a href="http://openmdao.org/">OpenMDAO</a>, under the Aeronautical Sciences Project in NASA's 
+<a href="http://www.aeronautics.nasa.gov/fap/">Fundamental Aeronautics Program</a>, as well as the Crew State Monitoring Element 
+of the Vehicle Systems Safety Technologies Project, in NASA’s 
+<a href="http://www.aeronautics.nasa.gov/programs_avsafe.htm">Aviation Safety Program</a>.</p>
+
+<p>A list of other open-source NASA codes can be found at <a href="http://code.nasa.gov/project/">code.nasa.gov</a>.</p>
+
+<h2>
+<a name="how-it-works" class="anchor" href="#how-it-works"><span class="octicon octicon-link"></span></a>How it works:</h2>
+
+<p>This application uses <a href="http://opencv.org/">OpenCV</a> to find the location of the user's face, then isolate the forehead region. Data is collected
+from this location over time to estimate the user's heart rate. This is done by measuring average optical
+intensity in the forehead location, in the subimage's green channel alone (a better color mixing ratio may exist, but the 
+blue channel tends to be very noisy). Physiological data can be estimated this way thanks to the optical absorption 
+characteristics of (oxy-) haemoglobin (see <a href="http://www.opticsinfobase.org/oe/abstract.cfm?uri=oe-16-26-21434">http://www.opticsinfobase.org/oe/abstract.cfm?uri=oe-16-26-21434</a>). </p>
+
+<p>With good lighting and minimal noise due to motion, a stable heartbeat should be 
+isolated in about 15 seconds. Other physiological waveforms (such as 
+<a href="http://en.wikipedia.org/wiki/Mayer_waves">Mayer waves</a>) should also be visible in the raw data stream.</p>
+
+<p>Once the user's heart rate has been estimated, real-time phase variation associated with this 
+frequency is also computed. This allows for the heartbeat to be exaggerated in the post-process frame rendering, 
+causing the highlighted forehead location to pulse in sync with the user's own heartbeat.</p>
+
+<p>Support for detection on multiple simultaneous individuals in a single camera's 
+image stream is definitely possible, but at the moment only the information from one face 
+is extracted for analysis.</p>
+
+<p>The overall dataflow/execution order for the real-time signal processing looks like:</p>
+
+<p><img src="http://i.imgur.com/xS7O8U3.png" alt="Alt text" title="Signal processing"></p>
+
+<p>This signal processing design is implemented in the openMDAO assembly object defined in
+<a href="lib/processors.py">lib/processors.py</a>.</p>
+
+<p>The definition of each component block used can be found in the source 
+files <a href="lib/imageProcess.py">lib/imageProcess.py</a>, <a href="lib/signalProcess.py">lib/signalProcess.py</a>, and 
+<a href="lib/sliceops.py">lib/sliceops.py</a>. The <code>@bin</code> and <code>@bout</code> blocks in the above graph denote assembly-level input and 
+output.</p>
+
+<h2>
+<a name="requirements" class="anchor" href="#requirements"><span class="octicon octicon-link"></span></a>Requirements:</h2>
+
+<ul>
+<li><a href="http://python.org/">Python v2.7+</a></li>
+<li>
+<a href="http://opencv.org/">OpenCV v2.4+</a>, with the cv2 python bindings</li>
+</ul><p>OpenCV is a powerful open-source computer vision library, with a convenient 
+numpy-compatible interface in the cv2 bindings.</p>
+
+<ul>
+<li><a href="http://openmdao.org/">OpenMDAO v0.5.5+</a></li>
+</ul><p>OpenMDAO is an open-source engineering framework that serves as a convenient 
+environment to containerize the required real-time analysis, and 
+allow for that analysis to be easily tweaked to specification and compared with alternative designs. 
+Upon installation, OpenMDAO is bootstrapped into its own Python 
+virtualenv, which must be activated before use (see the Quickstart section below). OpenMDAO requires python 2.6+, numpy, scipy, and matplotlib 
+(see <a href="http://openmdao.org/docs/getting-started/requirements.html">http://openmdao.org/docs/getting-started/requirements.html</a>)</p>
+
+<p>Running Windows, and completely new to Python? Full instructions for getting started with all requirements needed to
+run this code are available <a href="win_pythonxy.md">here</a></p>
+
+<h2>
+<a name="quickstart" class="anchor" href="#quickstart"><span class="octicon octicon-link"></span></a>Quickstart:</h2>
+
+<ul>
+<li>Activate the openMDAO virtual python environment in a command or terminal window. On Linux and OSX, this is done by
+running (note the period):</li>
+</ul><pre><code>. OpenMDAO/bin/activate
+</code></pre>
+
+<p>Or on Windows:</p>
+
+<pre><code>OpenMDAO\Scripts\activate
+</code></pre>
+
+<ul>
+<li>In the activated environment, navigate to the downloaded source directory, and run get_pulse.py to start the application</li>
+</ul><pre><code>python get_pulse.py
+</code></pre>
+
+<ul>
+<li>To run on an IP camera, set the <code>url</code>, <code>user</code>, and <code>password</code> strings on line 134 of <code>get_pulse_ipcam.py</code>, then run:</li>
+</ul><pre><code>python get_pulse_ipcam.py
+</code></pre>
+
+<p>This was tested on a Wowwee Rovio.</p>
+
+<ul>
+<li>If there is an error, try running <code>test_webcam.py</code> in the same directory to check if your openCV installation and webcam can be made to work
+with this application.</li>
+</ul><h2>
+<a name="usage-notes" class="anchor" href="#usage-notes"><span class="octicon octicon-link"></span></a>Usage notes:</h2>
+
+<ul>
+<li>When run, a window will open showing a stream from your computer's webcam</li>
+<li>When a forehead location has been isolated, the user should press "S" on their 
+keyboard to lock this location, and remain as still as possible (the camera 
+stream window must have focus for the click to register). This freezes the acquisition location in place. This lock can
+be released by pressing "S" again.</li>
+<li>To view a stream of the measured data as it is gathered, press "D". To hide this display, press "D" again.</li>
+<li>The data display shows three data traces, from top to bottom: 
+
+<ol>
+<li>raw optical intensity</li>
+<li>extracted heartbeat signal</li>
+<li>Power spectral density, with local maxima indicating the heartrate (in beats per minute). </li>
+</ol>
+</li>
+<li>With consistent lighting and minimal head motion, a stable heartbeat should be 
+isolated in about 15 to 20 seconds. A count-down is shown in the image frame.</li>
+<li>If a large spike in optical intensity is measured in the data (due to motion 
+noise, sudden change in lighting, etc) the data collection process is reset and 
+started over. The sensitivity of this feature can be tweaked by changing <code>data_spike_limit</code> on line 31 of <a href="get_pulse.py">get_pulse.py</a>.
+Other mutable parameters of the analysis can be changed here as well.</li>
+</ul><h2>
+<a name="todo" class="anchor" href="#todo"><span class="octicon octicon-link"></span></a>TODO:</h2>
+
+<ul>
+<li>There have been some requests for a video demo</li>
+<li>Instead of processing using the green channel alone, it is likely that some fixed combination of the statistics of the
+R,G,B channels could instead be optimal (though I was unable to find a simple combination that was better than green
+alone). If so, the mixing ratios might be determinable from the forward projection matrices of PCA or ICA operators 
+computed on a set of mean value R,G, and B data gathered over a trial data set (and verified with different individuals 
+under different lighting conditions).</li>
+<li>Support for multiple individuals</li>
+<li>Smoother tracking of data from foreheads, perhaps by buffering and registering/inverse-transforming image subframes</li>
+</ul>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Webcam-pulse-detector maintained by <a href="https://github.com/thearn">thearn</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+    
+
+  </body>
+</html>
