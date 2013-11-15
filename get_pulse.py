@@ -3,6 +3,11 @@ from lib.processors import findFaceGetPulse
 from lib.interface import plotXY, imshow, waitKey,destroyWindow, moveWindow
 import numpy as np      
 import datetime
+import time
+import senseapi
+import csUtil
+import threading
+import json
 
 class getPulseApp(object):
     """
@@ -40,6 +45,19 @@ class getPulseApp(object):
         self.key_controls = {"s" : self.toggle_search,
                              "d" : self.toggle_display_plot,
                              "f" : self.write_csv}
+        self.sensor_name = "heart_rate"
+        self.device_type = "webcam pulse detector"
+        self.upload_interval = 10
+        self.api = senseapi.SenseAPI()
+        credentials = json.load(open("credentials.json"))
+        self.api.AuthenticateSessionId(credentials["username"], senseapi.MD5Hash(credentials["password"]))
+        self.uploader = csUtil.DataUploader(self.api)
+        self.session = csUtil.Session(self.api)
+        self.sensorId = self.session.createSensorOnce(self.sensor_name, self.device_type, "float")
+
+        self.csThread = threading.Thread(target=self.write_cs)
+        self.csThread.start()
+
         
     def write_csv(self):
         """
@@ -52,7 +70,18 @@ class getPulseApp(object):
                          self.processor.fft.samples]).T
         np.savetxt(fn, data, delimiter=',')
         
-
+    def write_cs(self):
+        """
+        Writes current data to common sense
+        """
+        while True:
+            time.sleep(self.upload_interval)
+            print "Tick"
+            if self.isReady():
+                bpm = self.processor.measure_heart.bpm
+                print "Storing {} bpm.".format(bpm)
+                self.uploader.addData(self.sensorId, datetime.datetime.now(), bpm)
+            
 
     def toggle_search(self):
         """
@@ -63,7 +92,7 @@ class getPulseApp(object):
         """
         state = self.processor.find_faces.toggle()
         if not state:
-        	self.processor.fft.reset()
+            self.processor.fft.reset()
         print "face detection lock =",not state
 
     def toggle_display_plot(self):
@@ -124,7 +153,6 @@ class getPulseApp(object):
         frame = self.camera.get_frame()
         self.h,self.w,_c = frame.shape
         
-
         #display unaltered frame
         #imshow("Original",frame)
 
@@ -135,17 +163,23 @@ class getPulseApp(object):
         #collect the output frame for display
         output_frame = self.processor.frame_out
 
-        #show the processed/annotated output frame
+        #show the processed/annotated output frame        
         imshow("Processed",output_frame)
-
+        
         #create and/or update the raw data display if needed
         if self.bpm_plot:
             self.make_bpm_plot()
 
         #handle any key presses
         self.key_handler()
+       
+    def isReady(self):       
+        return self.processor.fft.ready
 
 if __name__ == "__main__":
-    App = getPulseApp()
+    App = getPulseApp()  
+     
+    prev = datetime.datetime.now()
     while True:
         App.main_loop()
+        
